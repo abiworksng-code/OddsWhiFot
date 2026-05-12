@@ -1,7 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || 
+               (typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || (process.env as any).VITE_GEMINI_API_KEY) : undefined);
 
 if (!apiKey && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('run.app')) {
   console.error("CRITICAL: GEMINI_API_KEY is missing. AI features will fail on this deployment.");
