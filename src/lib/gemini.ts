@@ -16,7 +16,7 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-flash",
       contents: [{
         role: "user",
         parts: [{
@@ -78,7 +78,7 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
     }
 
     return await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-flash",
       contents: [{
         role: 'user',
         parts: [{
@@ -109,8 +109,17 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
     }
 
     const text = response.text || "{}";
-    const cleanJson = text.replace(/```json\n?|```/g, "").trim();
-    return { ...JSON.parse(cleanJson), isAIPowered: true, source: usedSearch ? 'SEARCH' : 'MEMORY' } as any;
+    try {
+      const cleanJson = text.replace(/```json\n?|```/g, "").trim();
+      return { ...JSON.parse(cleanJson), isAIPowered: true, source: usedSearch ? 'SEARCH' : 'MEMORY' } as any;
+    } catch (parseError) {
+      console.warn("Gemini returned invalid JSON:", text);
+      return {
+        text: "Neural Link Malfunction: Engine returned malformed data. Basic reconstruction logic applied.",
+        scoreAdjustment: 0,
+        isAIPowered: false
+      };
+    }
   } catch (error: any) {
     if (error?.message?.includes('429')) {
        return {
@@ -195,7 +204,7 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
     }
 
     return await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-flash",
       contents: [{
         role: 'user',
         parts: [{
@@ -220,9 +229,14 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
     }
 
     const text = response.text || "{}";
-    const cleanJson = text.replace(/```json\n?|```/g, "").trim();
-    const parsed = JSON.parse(cleanJson);
-    return { ...parsed, isAIPowered: true, source: usedSearch ? 'SEARCH' : 'MEMORY' }; 
+    try {
+      const cleanJson = text.replace(/```json\n?|```/g, "").trim();
+      const parsed = JSON.parse(cleanJson);
+      return { ...parsed, isAIPowered: true, source: usedSearch ? 'SEARCH' : 'MEMORY' }; 
+    } catch (parseError) {
+      console.error("Deep Search JSON Parse Error:", text);
+      return fallbackDeepAnalysis(homeTeam, awayTeam);
+    }
   } catch (error: any) {
     if (error?.message?.includes('429')) {
       console.warn("AI Quota hit, using statistical fallback.");

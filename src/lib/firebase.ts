@@ -67,6 +67,11 @@ export function sanitizeForFirestore(obj: any): any {
     return obj;
   }
 
+  // Handle Firestore special types and Dates
+  if (obj instanceof Date || (obj.constructor && obj.constructor.name !== 'Object' && obj.constructor.name !== 'Array')) {
+    return obj;
+  }
+
   if (Array.isArray(obj)) {
     return obj.map(sanitizeForFirestore);
   }

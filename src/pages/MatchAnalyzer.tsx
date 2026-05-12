@@ -377,45 +377,30 @@ export function MatchAnalyzer() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full overflow-hidden">
-      {/* API Key Warning for external deployments */}
+      {/* API Key Warning for external deployments (Non-blocking) */}
       {((!import.meta.env.VITE_GEMINI_API_KEY || !import.meta.env.VITE_THE_ODDS_API_KEY) && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('run.app')) && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-amber-500/50 p-6 rounded-lg shadow-2xl max-w-md backdrop-blur-xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-amber-500/20 rounded-full">
-              <AlertTriangle className="w-6 h-6 text-amber-500" />
+        <div className="fixed bottom-6 right-6 z-[60] bg-black/90 border border-amber-500/50 p-4 rounded-xl shadow-2xl max-w-[280px] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-1.5 bg-amber-500/20 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-white">Critical API Link Failure</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Neural Links Limited</h3>
           </div>
-          <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-            Key neural variables are missing from your deployment. 
-            Vite requires these at <span className="text-white font-bold underline">build-time</span>.
+          <p className="text-[9px] text-zinc-500 leading-relaxed mb-3">
+            Satellite variables are missing. System is operating in <span className="text-amber-500 font-bold italic">restricted logic mode</span>.
           </p>
-          <div className="space-y-4 mb-6">
-            <div className="bg-white/5 p-3 rounded border border-white/10">
-              <p className="text-[10px] font-black uppercase text-zinc-500 mb-2">Required Variables:</p>
-              <ul className="text-[10px] space-y-1">
-                <li className="flex justify-between">
-                  <span className="text-zinc-300 italic">VITE_GEMINI_API_KEY</span>
-                  {import.meta.env.VITE_GEMINI_API_KEY ? <span className="text-emerald-500">SET</span> : <span className="text-red-500">MISSING</span>}
-                </li>
-                <li className="flex justify-between">
-                  <span className="text-zinc-300 italic">VITE_THE_ODDS_API_KEY</span>
-                  {import.meta.env.VITE_THE_ODDS_API_KEY ? <span className="text-emerald-500">SET</span> : <span className="text-red-500">MISSING</span>}
-                </li>
-              </ul>
-            </div>
-            
-            <ol className="text-[10px] space-y-2 text-zinc-300 list-decimal pl-4">
-              <li>Add missing keys in <span className="text-emerald-400">Netlify Dashboard &gt; Site Settings &gt; Environment Variables</span>.</li>
-              <li>Go to <span className="text-emerald-400">Deploys</span> tab.</li>
-              <li>Click <span className="text-white font-bold underline">"Trigger deploy" &gt; "Deploy project without cache"</span>.</li>
-            </ol>
+          <div className="space-y-1 mb-4">
+            {!import.meta.env.VITE_GEMINI_API_KEY && <div className="text-[8px] text-red-500/80 font-black uppercase">• Gemini AI missing</div>}
+            {!import.meta.env.VITE_THE_ODDS_API_KEY && <div className="text-[8px] text-red-500/80 font-black uppercase">• Odds API missing</div>}
           </div>
           <button 
-            onClick={() => window.location.reload()}
-            className="w-full py-2 bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest rounded hover:bg-amber-400 transition-colors"
+            onClick={(e) => {
+              const target = e.currentTarget.parentElement;
+              if (target) target.style.display = 'none';
+            }}
+            className="w-full py-1.5 bg-white/5 border border-white/10 text-white text-[8px] font-black uppercase tracking-[0.2em] rounded hover:bg-white/10 transition-all"
           >
-            I have redeployed, refresh links
+            Acknowledge Fallback
           </button>
         </div>
       )}
