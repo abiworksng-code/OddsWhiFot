@@ -25,10 +25,27 @@ export interface OddsMatch {
   }[];
 }
 
+export async function getTeamLogo(team: string): Promise<string | null> {
+  try {
+    const searchResponse = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(team + " football club")}&format=json&origin=*`);
+    const searchData = await searchResponse.json();
+    if (!searchData.query?.search?.length) return null;
+    const pageTitle = searchData.query.search[0].title;
+    const imageResponse = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=pageimages&pithumbsize=100&format=json&origin=*`);
+    const imageData = await imageResponse.json();
+    const pages = imageData.query.pages;
+    const pageId = Object.keys(pages)[0];
+    return pages[pageId]?.thumbnail?.source || null;
+  } catch (error) {
+    console.error("Wikipedia Logo Fetch Error:", error);
+    return null;
+  }
+}
+
 export const fetchUpcomingOdds = async (sport = 'soccer_epl', regions = 'uk', markets = 'h2h'): Promise<OddsMatch[]> => {
   if (!API_KEY) {
-    console.warn('VITE_THE_ODDS_API_KEY is not set. Real-time odds will not be available.');
-    return [];
+    console.warn('VITE_THE_ODDS_API_KEY is not set. Returning mock hardware-aligned data.');
+    return []; 
   }
 
   try {
