@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
+const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('run.app')) {
   console.error("CRITICAL: GEMINI_API_KEY is missing. AI features will fail on this deployment.");
@@ -16,7 +16,7 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [{
         role: "user",
         parts: [{
@@ -78,7 +78,7 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
     }
 
     return await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [{
         role: 'user',
         parts: [{
@@ -204,7 +204,7 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
     }
 
     return await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [{
         role: 'user',
         parts: [{
