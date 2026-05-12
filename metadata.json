@@ -1,7 +1,5 @@
 {
   "name": "ODDSWHIZ PRO AI",
   "description": "Professional football betting reconstruction engine powered by Gemini AI. Features include deep match analysis, live tempo tracking, risk detection, automated market transformations, and an administrative match management system.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
+  "requestFramePermissions": []
 }

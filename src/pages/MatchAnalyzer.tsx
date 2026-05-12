@@ -196,7 +196,7 @@ export function MatchAnalyzer() {
       const result = await archiveAnalysis(analysisToArchive, matchInfo);
       if (result) {
         setArchiveSuccess(true);
-      } else if (!user) {
+      } else if (!user && !isAuto) {
         setArchiveError('NOT_LOGGED_IN');
       }
       
@@ -611,9 +611,10 @@ export function MatchAnalyzer() {
             ) : (
                <Database className={`w-3 h-3 ${isArchiving ? 'animate-pulse text-amber-500' : archiveSuccess ? 'text-emerald-500' : 'text-zinc-600'}`} />
             )}
-            <span className={`text-[9px] font-black uppercase tracking-widest ${archiveError ? 'text-red-400' : 'text-zinc-400'}`}>
+            <span className={`text-[9px] font-black uppercase tracking-widest ${archiveError && archiveError !== 'NOT_LOGGED_IN' ? 'text-red-400' : 'text-zinc-400'}`}>
                {isArchiving ? 'Syncing with Neural Vault...' : 
-                archiveError ? `Sync Error: ${archiveError === 'NOT_LOGGED_IN' ? 'AUTH_REQUIRED' : 'NETWORK_REJECT'}` :
+                archiveError === 'NOT_LOGGED_IN' ? 'Vault Access Locked (Login Required)' :
+                archiveError ? `Sync Error: ${archiveError === 'AUTH_REQUIRED' ? 'AUTH_REQUIRED' : 'NETWORK_REJECT'}` :
                 archiveSuccess ? 'Analyzed Snapshot Persisted' : 
                 !user ? 'Vault Access Locked (Sign in to save)' : 'Pending Neural Sync'}
             </span>
