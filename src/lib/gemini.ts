@@ -23,29 +23,64 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
   }
 }
 
-export async function getFinalSystemVerdict(analysis: AnalysisOutput) {
+export interface SystemVerdict {
+  text: string;
+  scoreAdjustment: number;
+  suggestedMarketOverride?: string;
+  riskWarning?: string;
+}
+
+export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<SystemVerdict> {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `You are the Final Quality Control Agent for a high-stakes betting analysis system.
       
       We have two inputs:
-      1. REAL-WORLD DATA: ${JSON.stringify(analysis.realData)}
+      1. REAL-WORLD DATA: ${JSON.stringify(analysis.realData || "No search data available for this match yet.")}
       2. COLD-LOGIC ENGINE RESULTS: Confidence: ${analysis.confidence?.score}, Market: ${analysis.transformation?.suggestedMarket}, Trap: ${analysis.oddsTrap?.isTrap}
       
       Your task:
-      - Compare the Engine's logical conclusion with the searched Real-World data.
-      - Identify if the Engine is being too conservative or too aggressive.
-      - Provide a final, authoritative 2-3 sentence verdict that integrates both.
-      - If there is a major conflict, warn the user.`,
+      - Compare the Engine's logical conclusion with any Real-World data (or your own knowledge if realData is empty).
+      - If Real-World data is missing, perform a QUICK search to verify if there are any major injury crises or form shifts for this match.
+      - Provide a final, authoritative 2-3 sentence verdict.
+      - Return a JSON object with:
+        "text": string (the verdict),
+        "scoreAdjustment": number (a correction between -2.0 and +2.0 to be applied to the engine's score),
+        "suggestedMarketOverride": string (optional, if you strongly disagree with the engine's market),
+        "riskWarning": string (optional, if a hidden danger is found)`,
+      config: {
+        tools: [{ googleSearch: {} }],
+        toolConfig: { includeServerSideToolInvocations: true },
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            text: { type: Type.STRING },
+            scoreAdjustment: { type: Type.NUMBER },
+            suggestedMarketOverride: { type: Type.STRING },
+            riskWarning: { type: Type.STRING }
+          },
+          required: ["text", "scoreAdjustment"]
+        }
+      }
     });
-    return response.text || analysis.aiReasoning;
+
+    const text = response.text || "{}";
+    const cleanJson = text.replace(/```json\n?|```/g, "").trim();
+    return JSON.parse(cleanJson);
   } catch (error: any) {
     if (error?.message?.includes('429') || error?.status === 429) {
-      return "Final Verification: System confirms trend alignment despite AI rate limiting. Proceed with established engine logic.";
+       return {
+         text: "Final Verification: System confirms trend alignment despite AI rate limiting. Proceed with established engine logic.",
+         scoreAdjustment: 0
+       };
     }
     console.error(error);
-    return analysis.aiReasoning;
+    return {
+      text: analysis.aiReasoning,
+      scoreAdjustment: 0
+    };
   }
 }
 

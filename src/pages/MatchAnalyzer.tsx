@@ -148,12 +148,23 @@ export function MatchAnalyzer() {
     };
 
     // --- CROSS-VERIFICATION LOOP for Sidebar Matches ---
-    const finalVerdict = await getFinalSystemVerdict(intermediateAnalysis);
+    const verdict = await getFinalSystemVerdict(intermediateAnalysis);
     
-    const finalAnalysis = {
+    const finalAnalysis: AnalysisOutput = {
       ...intermediateAnalysis,
-      aiReasoning: finalVerdict
+      aiReasoning: verdict.text,
+      confidence: {
+        ...intermediateAnalysis.confidence,
+        score: Math.min(10, Math.max(0, intermediateAnalysis.confidence.score + verdict.scoreAdjustment)),
+        category: (Math.min(10, Math.max(0, intermediateAnalysis.confidence.score + verdict.scoreAdjustment))) > 8.5 ? 'Elite Safe' : 
+                 (Math.min(10, Math.max(0, intermediateAnalysis.confidence.score + verdict.scoreAdjustment))) > 7.5 ? 'Strong Safe' : 'Medium Safe'
+      }
     };
+
+    if (verdict.suggestedMarketOverride) {
+      finalAnalysis.transformation.suggestedMarket = verdict.suggestedMarketOverride as Market;
+      finalAnalysis.transformation.reasoning = `[AI OVERRIDE] ${verdict.riskWarning || 'Market adjusted via neural verification.'} Original logic was: ${intermediateAnalysis.transformation.reasoning}`;
+    }
     
     setAnalysis(finalAnalysis);
     setIsAnalyzing(false);
@@ -315,14 +326,29 @@ export function MatchAnalyzer() {
         }
       };
 
-      // 4. Final System Verdict (Cross-Verification)
-      const finalVerdict = await getFinalSystemVerdict(mappedAnalysis);
-      mappedAnalysis.aiReasoning = finalVerdict;
+    // 4. Final System Verdict (Cross-Verification)
+      const verdict = await getFinalSystemVerdict(mappedAnalysis);
+      
+      const finalAnalysis: AnalysisOutput = {
+        ...mappedAnalysis,
+        aiReasoning: verdict.text,
+        confidence: {
+          ...mappedAnalysis.confidence,
+          score: Math.min(10, Math.max(0, mappedAnalysis.confidence.score + verdict.scoreAdjustment)),
+          category: (Math.min(10, Math.max(0, mappedAnalysis.confidence.score + verdict.scoreAdjustment))) > 8.5 ? 'Elite Safe' : 
+                   (Math.min(10, Math.max(0, mappedAnalysis.confidence.score + verdict.scoreAdjustment))) > 7.5 ? 'Strong Safe' : 'Medium Safe'
+        }
+      };
 
-      setAnalysis(mappedAnalysis);
+      if (verdict.suggestedMarketOverride) {
+        finalAnalysis.transformation.suggestedMarket = verdict.suggestedMarketOverride as Market;
+        finalAnalysis.transformation.reasoning = `[AI OVERRIDE] ${verdict.riskWarning || 'Market adjusted via neural verification.'} Original logic was: ${mappedAnalysis.transformation.reasoning}`;
+      }
+
+      setAnalysis(finalAnalysis);
       
       // Auto-archive on completion for deep search
-      await handleArchive(mappedAnalysis, true);
+      await handleArchive(finalAnalysis, true);
     } catch (error) {
       console.error(error);
       setDeepAnalysisError(error instanceof Error ? error.message : 'Analysis link failed. Check satellite connection.');
