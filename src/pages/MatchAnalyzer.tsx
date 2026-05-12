@@ -20,7 +20,8 @@ import {
   XCircle,
   BarChart3,
   Coins,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 import { analyzeMatch, generateBackupCombo, validateMatchData, validateAnalysisOutput, ValidationError } from '../services/bettingAnalysisEngine';
 import { MatchData, AnalysisOutput, Market, LeagueTier, MatchTempo } from '../types';
@@ -31,6 +32,8 @@ import { fetchUpcomingOdds, OddsMatch } from '../services/oddsService';
 import { addSlipItem } from '../services/slipService';
 import { useEffect } from 'react';
 import { useAuth } from '../lib/AuthProvider';
+import { collection, query, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export function MatchAnalyzer() {
   const { user, signIn } = useAuth();
@@ -48,8 +51,10 @@ export function MatchAnalyzer() {
   const [isDeepSearching, setIsDeepSearching] = useState(false);
   const [deepAnalysisError, setDeepAnalysisError] = useState<string | null>(null);
   const [liveMatches, setLiveMatches] = useState<MatchData[]>([]);
+  const [customMatches, setCustomMatches] = useState<MatchData[]>([]);
   const [isLoadingOdds, setIsLoadingOdds] = useState(false);
   const [hideHighRisk, setHideHighRisk] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Helper to check risk level before full analysis
   const getMatchRiskStatus = (match: MatchData) => {
@@ -58,6 +63,32 @@ export function MatchAnalyzer() {
     const awayImp = 1 / match.originalOdds.away;
     if ((homeImp > 0.6 && match.homeStats.homeForm < 4) || (awayImp > 0.6 && match.awayStats.awayForm < 4)) return 'WARNING';
     return 'STABLE';
+  };
+
+  const fetchCustomMatches = async () => {
+    try {
+      const q = query(collection(db, 'matches'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+        isCustom: true
+      })) as any[];
+      setCustomMatches(data);
+    } catch (err) {
+      console.error("Failed to fetch custom matches:", err);
+    }
+  };
+
+  const handleDeleteCustomMatch = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete this custom match from repository?")) return;
+    try {
+      await deleteDoc(doc(db, 'matches', id));
+      setCustomMatches(prev => prev.filter(m => m.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
@@ -111,6 +142,7 @@ export function MatchAnalyzer() {
     };
 
     loadRealTimeOdds();
+    fetchCustomMatches();
   }, []);
 
   const handleAnalyze = async (match: MatchData) => {
@@ -445,7 +477,22 @@ export function MatchAnalyzer() {
         </div>
 
         <div className="p-2">
-          <div className="relative">
+          <div className="flex gap-1 mb-2 bg-black/20 p-1 rounded">
+            <button 
+              onClick={() => setShowHistory(false)}
+              className={`flex-1 text-[9px] font-black uppercase py-1.5 rounded transition-all ${!showHistory ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'bg-transparent text-zinc-500 hover:text-white'}`}
+            >
+              Live Odds
+            </button>
+            <button 
+              onClick={() => setShowHistory(true)}
+              className={`flex-1 text-[9px] font-black uppercase py-1.5 rounded transition-all ${showHistory ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'bg-transparent text-zinc-500 hover:text-white'}`}
+            >
+              Repository
+            </button>
+          </div>
+
+          <div className="relative mb-3">
             <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
             <input 
               type="text" 
@@ -454,84 +501,79 @@ export function MatchAnalyzer() {
             />
           </div>
         </div>
-        <div className="flex-1 overflow-auto p-2 space-y-1">
-          {isLoadingOdds && (
+
+        <div className="flex-1 overflow-auto p-2 space-y-1 scrollbar-thin">
+          {isLoadingOdds && !showHistory && (
             <div className="flex items-center justify-center p-4">
               <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
-              <span className="text-[10px] text-zinc-500 ml-2 uppercase font-bold">Fetching Live Odds...</span>
+              <span className="text-[10px] text-zinc-500 ml-2 uppercase font-bold">Synchronizing Feed...</span>
             </div>
           )}
 
-          {liveMatches
-            .filter(match => !hideHighRisk || getMatchRiskStatus(match) === 'STABLE')
+          {(showHistory ? [...customMatches, ...MOCK_MATCHES] : liveMatches)
+            .filter(match => !hideHighRisk || getMatchRiskStatus(match) !== 'HIGH')
             .map((match) => {
               const risk = getMatchRiskStatus(match);
+              const isCustom = (match as any).isCustom;
+              
               return (
                 <button
                   key={match.id}
                   onClick={() => handleAnalyze(match)}
-                  className={`w-full text-left p-3 rounded-sm border transition-all mb-1 relative overflow-hidden ${
+                  className={`w-full text-left p-3 rounded-lg border transition-all mb-1 relative overflow-hidden group ${
                     selectedMatch?.id === match.id 
                     ? 'bg-emerald-500/10 border-emerald-500/30' 
-                    : 'bg-white/[0.04] border-emerald-500/10 hover:border-emerald-500/30'
+                    : 'bg-white/[0.04] border-white/5 hover:border-emerald-500/30'
                   }`}
                 >
-                  {risk !== 'STABLE' && (
-                    <div className={`absolute top-0 right-0 p-1 px-2 text-[7px] font-black uppercase tracking-tighter rounded-bl ${
-                      risk === 'HIGH' ? 'bg-red-500 text-black' : 'bg-amber-500 text-black'
-                    }`}>
-                      {risk} RISK
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center mb-1">
+                  <div className="flex justify-between items-start mb-1">
                     <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter line-clamp-1 pr-12">{match.league}</span>
-                    <div className="flex gap-1">
-                       <span className="text-[9px] font-mono text-emerald-500/70">{match.originalOdds.home}</span>
-                       <span className="text-[9px] font-mono text-zinc-600">{match.originalOdds.draw}</span>
-                       <span className="text-[9px] font-mono text-zinc-600">{match.originalOdds.away}</span>
+                    <div className="flex gap-1 items-center">
+                      {isCustom && (
+                        <button 
+                          onClick={(e) => handleDeleteCustomMatch(e, match.id)}
+                          className="p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          title="Purge Match Data"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                      {risk !== 'STABLE' && (
+                        <div className={`px-1 rounded-[2px] text-[7px] font-black uppercase tracking-tighter ${
+                          risk === 'HIGH' ? 'bg-red-500 text-black' : 'bg-amber-500 text-black'
+                        }`}>
+                          {risk}
+                        </div>
+                      )}
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        risk === 'STABLE' ? 'bg-emerald-500' : 'bg-amber-500'
+                      }`}></span>
                     </div>
                   </div>
-                  <div className="text-[11px] font-black text-white uppercase italic">
-                    {match.homeTeam} <span className="text-emerald-500/30 px-0.5">VS</span> {match.awayTeam}
+                  <div className="text-[11px] font-black text-white uppercase italic leading-tight">
+                    {match.homeTeam} <span className="text-emerald-500/30 font-mono not-italic px-0.5">/</span> {match.awayTeam}
+                  </div>
+                  
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex gap-1.5">
+                       <span className="text-[9px] font-mono text-emerald-500/70">{match.originalOdds.home.toFixed(2)}</span>
+                       <span className="text-[9px] font-mono text-zinc-600">{match.originalOdds.draw.toFixed(2)}</span>
+                       <span className="text-[9px] font-mono text-zinc-600">{match.originalOdds.away.toFixed(2)}</span>
+                    </div>
+                    {selectedMatch?.id === match.id && (
+                      <Activity className="w-2.5 h-2.5 text-emerald-500 animate-pulse" />
+                    )}
                   </div>
                 </button>
               );
             })}
           
-          <div className="px-2 py-1 bg-white/5 rounded mb-2">
-              <span className="text-[8px] font-black uppercase text-zinc-500 tracking-[0.2em]">Archived Sim Data</span>
-          </div>
-          {MOCK_MATCHES
-            .filter(match => !hideHighRisk || getMatchRiskStatus(match) === 'STABLE')
-            .map((match) => {
-              const risk = getMatchRiskStatus(match);
-              return (
-                <button
-                  key={match.id}
-                  onClick={() => handleAnalyze(match)}
-                  className={`w-full text-left p-3 rounded-sm border transition-all relative overflow-hidden mb-1 ${
-                    selectedMatch?.id === match.id 
-                    ? 'bg-emerald-500/10 border-emerald-500/30' 
-                    : 'bg-white/[0.02] border-transparent hover:border-white/10'
-                  }`}
-                >
-                  {risk !== 'STABLE' && (
-                    <div className={`absolute top-0 right-0 p-1 px-2 text-[7px] font-black uppercase tracking-tighter rounded-bl ${
-                      risk === 'HIGH' ? 'bg-red-500 text-black' : 'bg-amber-500 text-black'
-                    }`}>
-                      {risk} RISK
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter pr-12">{match.league}</span>
-                    <span className="text-[9px] text-zinc-500 uppercase">{match.leagueTier}</span>
-                  </div>
-                  <div className="text-[11px] font-medium text-white">
-                    {match.homeTeam} <span className="text-zinc-600 px-1">vs</span> {match.awayTeam}
-                  </div>
-                </button>
-              );
-            })}
+          {(showHistory ? [...customMatches, ...MOCK_MATCHES] : liveMatches).length === 0 && (
+            <div className="py-20 text-center text-[10px] text-zinc-700 uppercase font-black space-y-2">
+              <Database className="w-8 h-8 text-zinc-900 mx-auto opacity-50" />
+              <p>Buffer Stream Empty</p>
+            </div>
+          )}
         </div>
       </div>
 

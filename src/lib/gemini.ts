@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-// In AI Studio, process.env.GEMINI_API_KEY is the standard way to access the key in Vite.
-const apiKey = process.env.GEMINI_API_KEY;
+// In AI Studio, we check both the standard Vite env and the fallback process.env
+const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
@@ -53,7 +53,7 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
   }
 
   const tryGenerate = async (useSearch: boolean) => {
-    const config: any = {
+    const config = {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -64,12 +64,9 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
           riskWarning: { type: Type.STRING }
         },
         required: ["text", "scoreAdjustment"]
-      }
+      },
+      tools: useSearch ? [{ googleSearch: {} }] : undefined
     };
-
-    if (useSearch) {
-      config.tools = [{ googleSearch: {} }];
-    }
 
     return await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -131,7 +128,7 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
   }
 
   const tryDeepAnalysis = async (useSearch: boolean) => {
-    const config: any = {
+    const config = {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -177,12 +174,9 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
           confidenceScore: { type: Type.NUMBER }
         },
         required: ["homeTeam", "awayTeam", "league", "analysis", "confidenceScore"]
-      }
+      },
+      tools: useSearch ? [{ googleSearch: {} }] : undefined
     };
-
-    if (useSearch) {
-      config.tools = [{ googleSearch: {} }];
-    }
 
     return await ai.models.generateContent({
       model: "gemini-3-flash-preview",
