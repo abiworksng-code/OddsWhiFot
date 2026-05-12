@@ -15,9 +15,20 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.use(express.json());
+
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
+
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.get("/api/test", (req, res) => {
+    res.json({ message: "API is working" });
   });
 
   app.get("/api/team-logo-wiki", async (req, res) => {
@@ -63,7 +74,7 @@ async function startServer() {
     res.json(odds);
   });
 
-  app.post("/api/ai/pro-reasoning", express.json(), async (req, res) => {
+  app.post("/api/ai/pro-reasoning", async (req, res) => {
     const { match, selection } = req.body;
     try {
       const prompt = `Analyze the football match ${match.homeTeam} vs ${match.awayTeam} in ${match.league}. 
@@ -73,17 +84,20 @@ async function startServer() {
 
       const response = await genAI.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
       
       res.json({ text: response.text });
     } catch (error) {
       console.error("AI reasoning error:", error);
-      res.status(500).json({ error: "Failed to generate AI reasoning" });
+      res.status(500).json({ 
+        error: "Failed to generate AI reasoning", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
 
-  app.post("/api/ai/deep-analysis", express.json(), async (req, res) => {
+  app.post("/api/ai/deep-analysis", async (req, res) => {
     const { homeTeam, awayTeam } = req.body;
     try {
       const prompt = `Perform a deep dive analysis for the football match: ${homeTeam} vs ${awayTeam}.
@@ -130,7 +144,7 @@ async function startServer() {
 
       const response = await genAI.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
           tools: [{ googleSearch: {} }],
           toolConfig: { includeServerSideToolInvocations: true },
@@ -143,18 +157,21 @@ async function startServer() {
       res.json(JSON.parse(cleanJson));
     } catch (error) {
       console.error("Deep Analysis Error:", error);
-      res.status(500).json({ error: "Deep analysis failed", details: error instanceof Error ? error.message : String(error) });
+      res.status(500).json({ 
+        error: "Deep analysis failed", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
 
-  app.post("/api/ai/final-verdict", express.json(), async (req, res) => {
+  app.post("/api/ai/final-verdict", async (req, res) => {
     const { analysis } = req.body;
     try {
       const prompt = `You are the Final Quality Control Agent for a high-stakes betting analysis system.
       
       We have two inputs:
       1. REAL-WORLD DATA: ${JSON.stringify(analysis.realData)}
-      2. COLD-LOGIC ENGINE RESULTS: Confidence: ${analysis.confidence.score}, Market: ${analysis.transformation.suggestedMarket}, Trap: ${analysis.oddsTrap.isTrap}
+      2. COLD-LOGIC ENGINE RESULTS: Confidence: ${analysis.confidence?.score}, Market: ${analysis.transformation?.suggestedMarket}, Trap: ${analysis.oddsTrap?.isTrap}
       
       Your task:
       - Compare the Engine's logical conclusion with the searched Real-World data.
@@ -164,14 +181,22 @@ async function startServer() {
 
       const response = await genAI.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
       
       res.json({ text: response.text });
     } catch (error) {
       console.error("Final verdict error:", error);
-      res.status(500).json({ error: "Failed to generate final verdict" });
+      res.status(500).json({ 
+        error: "Failed to generate final verdict",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
+  });
+
+  // API 404 handler
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: "API route not found" });
   });
 
   // Vite middleware for development
@@ -188,6 +213,15 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  // Global error handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('SERVER ERROR:', err);
+    res.status(500).json({ 
+      error: "Internal Server Error", 
+      details: err instanceof Error ? err.message : String(err) 
+    });
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

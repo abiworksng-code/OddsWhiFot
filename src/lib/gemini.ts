@@ -7,7 +7,14 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ match, selection })
     });
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Pro Reasoning Non-JSON Response:", text);
+      throw new Error("Server returned HTML. Check API route availability.");
+    }
     return data.text || "Market calibration indicates high-density value. Reconstruction engine confirms technical alignment.";
   } catch (error) {
     console.error("Gemini Proxy Error:", error);
@@ -22,7 +29,14 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ analysis })
     });
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Final Verdict Non-JSON Response:", text);
+      return analysis.aiReasoning;
+    }
     return data.text || analysis.aiReasoning;
   } catch (error) {
     console.error("Gemini Proxy Error:", error);
@@ -38,12 +52,20 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
       body: JSON.stringify({ homeTeam, awayTeam })
     });
     
-    if (!response.ok) {
-       const errorData = await response.json();
-       throw new Error(errorData.details || errorData.error || 'Deep Analysis failed at proxy layer');
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Deep Match Analysis Non-JSON Response:", text);
+      throw new Error("Server returned HTML. This usually means the API route was not found or the server crashed.");
     }
 
-    return await response.json();
+    if (!response.ok) {
+       throw new Error(data.details || data.error || 'Deep Analysis failed at proxy layer');
+    }
+
+    return data;
   } catch (error) {
     console.error("Gemini Deep Proxy Error:", error);
     throw error;
