@@ -1,7 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
+
+if (!apiKey) {
+  console.warn("GEMINI_API_KEY is not defined. AI features will be limited.");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 export async function getProReasoning(match: { homeTeam: string; awayTeam: string; league: string }, selection: string) {
   try {
