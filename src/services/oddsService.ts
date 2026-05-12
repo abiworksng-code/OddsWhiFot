@@ -1,8 +1,5 @@
 import axios from 'axios';
 
-const API_KEY = import.meta.env.VITE_THE_ODDS_API_KEY;
-const BASE_URL = 'https://api.the-odds-api.com/v4/sports';
-
 export interface OddsMatch {
   id: string;
   sport_key: string;
@@ -43,23 +40,9 @@ export async function getTeamLogo(team: string): Promise<string | null> {
 }
 
 export const fetchUpcomingOdds = async (sport = 'soccer_epl', regions = 'uk', markets = 'h2h'): Promise<OddsMatch[]> => {
-  if (!API_KEY) {
-    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('run.app')) {
-       console.error("CRITICAL: VITE_THE_ODDS_API_KEY is missing in production. Live odds will not be available.");
-    } else {
-       console.warn('VITE_THE_ODDS_API_KEY is not set. Returning mock hardware-aligned data.');
-    }
-    return []; 
-  }
-
   try {
-    const response = await axios.get(`${BASE_URL}/${sport}/odds`, {
-      params: {
-        apiKey: API_KEY,
-        regions,
-        markets,
-        oddsFormat: 'decimal',
-      },
+    const response = await axios.get('/api/odds/upcoming', {
+      params: { sport, regions, markets },
     });
     return response.data;
   } catch (error) {
@@ -69,13 +52,8 @@ export const fetchUpcomingOdds = async (sport = 'soccer_epl', regions = 'uk', ma
 };
 
 export const getSports = async () => {
-  if (!API_KEY) return [];
   try {
-    const response = await axios.get(`${BASE_URL}`, {
-      params: {
-        apiKey: API_KEY,
-      },
-    });
+    const response = await axios.get('/api/odds/sports');
     return response.data;
   } catch (error) {
     console.error('Error fetching sports:', error);

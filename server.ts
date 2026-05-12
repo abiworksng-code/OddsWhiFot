@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import axios from "axios";
 
 dotenv.config();
 
@@ -16,7 +17,48 @@ async function startServer() {
 
   // API routes
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ 
+      status: "ok"
+    });
+  });
+
+  app.get("/api/odds/upcoming", async (req, res) => {
+    try {
+      const { sport = 'soccer_epl', regions = 'uk', markets = 'h2h' } = req.query;
+      const apiKey = process.env.THE_ODDS_API_KEY || process.env.VITE_THE_ODDS_API_KEY;
+      
+      if (!apiKey) {
+        return res.json([]);
+      }
+
+      const response = await axios.get(`https://api.the-odds-api.com/v4/sports/${sport}/odds`, {
+        params: {
+          apiKey,
+          regions,
+          markets,
+          oddsFormat: 'decimal',
+        },
+      });
+      res.json(response.data);
+    } catch (error: any) {
+      console.error("Odds API Error:", error);
+      res.json([]);
+    }
+  });
+
+  app.get("/api/odds/sports", async (req, res) => {
+    try {
+      const apiKey = process.env.THE_ODDS_API_KEY || process.env.VITE_THE_ODDS_API_KEY;
+      if (!apiKey) return res.json([]);
+
+      const response = await axios.get(`https://api.the-odds-api.com/v4/sports`, {
+        params: { apiKey },
+      });
+      res.json(response.data);
+    } catch (error: any) {
+      console.error("Sports API Error:", error);
+      res.json([]);
+    }
   });
 
   // API 404 handler

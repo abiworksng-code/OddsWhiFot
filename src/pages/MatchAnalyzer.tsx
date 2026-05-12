@@ -377,34 +377,6 @@ export function MatchAnalyzer() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full overflow-hidden">
-      {/* API Key Warning for external deployments (Non-blocking) */}
-      {((!import.meta.env.VITE_GEMINI_API_KEY || !import.meta.env.VITE_THE_ODDS_API_KEY) && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('run.app')) && (
-        <div className="fixed bottom-6 right-6 z-[60] bg-black/90 border border-amber-500/50 p-4 rounded-xl shadow-2xl max-w-[280px] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-1.5 bg-amber-500/20 rounded-lg">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-            </div>
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Neural Links Limited</h3>
-          </div>
-          <p className="text-[9px] text-zinc-500 leading-relaxed mb-3">
-            Satellite variables are missing. System is operating in <span className="text-amber-500 font-bold italic">restricted logic mode</span>.
-          </p>
-          <div className="space-y-1 mb-4">
-            {!import.meta.env.VITE_GEMINI_API_KEY && <div className="text-[8px] text-red-500/80 font-black uppercase">• Gemini AI missing</div>}
-            {!import.meta.env.VITE_THE_ODDS_API_KEY && <div className="text-[8px] text-red-500/80 font-black uppercase">• Odds API missing</div>}
-          </div>
-          <button 
-            onClick={(e) => {
-              const target = e.currentTarget.parentElement;
-              if (target) target.style.display = 'none';
-            }}
-            className="w-full py-1.5 bg-white/5 border border-white/10 text-white text-[8px] font-black uppercase tracking-[0.2em] rounded hover:bg-white/10 transition-all"
-          >
-            Acknowledge Fallback
-          </button>
-        </div>
-      )}
-
       {/* Sidebar: Match Selector */}
       <div className="lg:col-span-3 technical-border bg-[color:var(--color-header)] flex flex-col h-[50vh] lg:h-full rounded-lg overflow-hidden">
         <div className="p-3 border-b border-white/5 flex items-center justify-between">

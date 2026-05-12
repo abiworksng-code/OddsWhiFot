@@ -1,14 +1,18 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || 
-               (typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || (process.env as any).VITE_GEMINI_API_KEY) : undefined);
-
-if (!apiKey && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('run.app')) {
-  console.error("CRITICAL: GEMINI_API_KEY is missing. AI features will fail on this deployment.");
-}
+// In AI Studio, process.env.GEMINI_API_KEY is the standard way to access the key in Vite.
+const apiKey = process.env.GEMINI_API_KEY;
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+
+export interface SystemVerdict {
+  text: string;
+  scoreAdjustment: number;
+  suggestedMarketOverride?: string;
+  riskWarning?: string;
+  isAIPowered?: boolean;
+}
 
 export async function getProReasoning(match: { homeTeam: string; awayTeam: string; league: string }, selection: string) {
   if (!apiKey) {
@@ -34,20 +38,9 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
     if (error?.message?.includes('429')) {
       return "The AI analysis engine is currently cooling down. Technical confidence in this market remains High based on raw data.";
     }
-    if (error?.message?.includes('404')) {
-      return "Satellite link 404: The matching neural model is unavailable in this region. System defaulting to high-confidence logic parameters.";
-    }
     console.warn("Reasoning AI failed:", error);
     return "Statistical confidence remains in upper tier thresholds based on engine logic.";
   }
-}
-
-export interface SystemVerdict {
-  text: string;
-  scoreAdjustment: number;
-  suggestedMarketOverride?: string;
-  riskWarning?: string;
-  isAIPowered?: boolean;
 }
 
 export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<SystemVerdict> {
@@ -122,20 +115,7 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
       };
     }
   } catch (error: any) {
-    if (error?.message?.includes('429')) {
-       return {
-         text: "Final Verification: System confirms trend alignment despite AI rate limiting.",
-         scoreAdjustment: 0,
-         isAIPowered: false
-       };
-    }
-    if (error?.message?.includes('404')) {
-      return {
-        text: "Neural Link 404: Satellite model mismatch. Reverting to logic engine verification.",
-        scoreAdjustment: 0,
-        isAIPowered: false
-      };
-    }
+    console.error("Gemini Final Verdict Error:", error);
     return {
       text: analysis.aiReasoning,
       scoreAdjustment: 0,
@@ -239,12 +219,8 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
       return fallbackDeepAnalysis(homeTeam, awayTeam);
     }
   } catch (error: any) {
-    if (error?.message?.includes('429')) {
-      console.warn("AI Quota hit, using statistical fallback.");
-      return fallbackDeepAnalysis(homeTeam, awayTeam);
-    }
     console.error("Gemini Deep Analysis Error:", error);
-    throw error;
+    return fallbackDeepAnalysis(homeTeam, awayTeam);
   }
 }
 
