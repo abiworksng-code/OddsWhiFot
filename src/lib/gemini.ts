@@ -6,7 +6,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 export async function getProReasoning(match: { homeTeam: string; awayTeam: string; league: string }, selection: string) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: `Analyze the football match ${match.homeTeam} vs ${match.awayTeam} in ${match.league}. 
       The chosen market is ${selection}. Provide a 2-3 sentence "Pro Technical Insight" explaining why this market is high-confidence, 
       focusing on tempo, tactical setup, or market value. Keep it professional, data-centric, and concise. 
@@ -23,7 +23,7 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
 export async function getFinalSystemVerdict(analysis: AnalysisOutput) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: `You are the Final Quality Control Agent for a high-stakes betting analysis system.
       
       We have two inputs:
@@ -46,7 +46,7 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput) {
 export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: `Perform a deep dive analysis for the football match: ${homeTeam} vs ${awayTeam}.
       Use Google Search to find current data: 
       1. Recent form of both teams.
@@ -58,6 +58,7 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
       Then, provide a professional betting reconstruction.`,
       config: {
         tools: [{ googleSearch: {} }],
+        toolConfig: { includeServerSideToolInvocations: true },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -117,7 +118,10 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
       }
     });
 
-    return JSON.parse(response.text || "{}");
+    const text = response.text || "{}";
+    // Strip markdown if present
+    const cleanJson = text.replace(/```json\n?|```/g, "").trim();
+    return JSON.parse(cleanJson);
   } catch (error) {
     console.error("Gemini Deep Analysis Error:", error);
     throw error;

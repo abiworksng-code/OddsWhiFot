@@ -46,6 +46,7 @@ export function MatchAnalyzer() {
   const [homeInput, setHomeInput] = useState('');
   const [awayInput, setAwayInput] = useState('');
   const [isDeepSearching, setIsDeepSearching] = useState(false);
+  const [deepAnalysisError, setDeepAnalysisError] = useState<string | null>(null);
   const [liveMatches, setLiveMatches] = useState<MatchData[]>([]);
   const [isLoadingOdds, setIsLoadingOdds] = useState(false);
   const [hideHighRisk, setHideHighRisk] = useState(false);
@@ -205,6 +206,7 @@ export function MatchAnalyzer() {
 
     setIsAnalyzing(true);
     setIsDeepSearching(true);
+    setDeepAnalysisError(null);
     setAnalysis(null);
     setSelectedMatch(null);
     setValidationErrors([]);
@@ -323,6 +325,7 @@ export function MatchAnalyzer() {
       await handleArchive(mappedAnalysis, true);
     } catch (error) {
       console.error(error);
+      setDeepAnalysisError(error instanceof Error ? error.message : 'Analysis link failed. Check satellite connection.');
     } finally {
       setIsAnalyzing(false);
       setIsDeepSearching(false);
@@ -384,6 +387,11 @@ export function MatchAnalyzer() {
                 <Zap className="w-3 h-3 text-emerald-400" />
                 <span className="text-[9px] font-black uppercase text-emerald-400">AI Deep Search</span>
              </div>
+             {deepAnalysisError && (
+               <div className="p-2 bg-red-500/10 border border-red-500/20 rounded mb-2">
+                  <p className="text-[8px] font-black text-red-500 uppercase leading-tight italic">Error: {deepAnalysisError}</p>
+               </div>
+             )}
              <input 
                type="text"
                placeholder="Home Team..."
