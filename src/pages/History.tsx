@@ -33,6 +33,7 @@ export function History() {
   const { user, signIn } = useAuth();
   const [history, setHistory] = useState<ArchivedAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<LocalFilter>(LocalFilter.ALL);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,9 +44,16 @@ export function History() {
       return;
     }
     setLoading(true);
-    const data = await getArchivedAnalyses();
-    setHistory(data || []);
-    setLoading(false);
+    setError(null);
+    try {
+      const data = await getArchivedAnalyses();
+      setHistory(data || []);
+    } catch (err: any) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Failed to retrieve archive sync.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -165,6 +173,25 @@ export function History() {
         ) : loading ? (
           <div className="h-40 flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-emerald-500 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-6 bg-red-500/[0.02] border border-red-500/10 rounded-3xl">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-2">Neural Link Severed</h3>
+            <div className="text-[9px] text-zinc-500 font-mono tracking-tighter max-w-md bg-black/40 p-3 rounded border border-white/5 overflow-auto max-h-40 mb-6">
+              {error}
+            </div>
+            <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mb-8">
+              Check satellite configuration or database permissions.
+            </p>
+            <button 
+              onClick={fetchHistory}
+              className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+            >
+              Retry Uplink
+            </button>
           </div>
         ) : filteredHistory.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-6">

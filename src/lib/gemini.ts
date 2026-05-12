@@ -1,17 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-const apiKey = process.env.GEMINI_API_KEY || (import.meta.env.VITE_GEMINI_API_KEY as string);
+const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? (process.env.GEMINI_API_KEY || (process.env as any).VITE_GEMINI_API_KEY) : undefined);
 
-if (!apiKey && typeof window !== 'undefined') {
-  console.warn("CRITICAL: GEMINI_API_KEY is not defined. Ensure it is set in Settings > Secrets or as an environment variable.");
+if (!apiKey && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('run.app')) {
+  console.error("CRITICAL: VITE_GEMINI_API_KEY is missing. AI features will fail on this deployment.");
 }
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 export async function getProReasoning(match: { homeTeam: string; awayTeam: string; league: string }, selection: string) {
   if (!apiKey) {
-    return "Neural analysis offline. Cold Logic Engine confirms technical alignment based on historical trend-lines.";
+    return "Neutral analysis offline. Cold Logic Engine confirms technical alignment based on historical trend-lines.";
   }
 
   try {
@@ -32,6 +32,9 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
   } catch (error: any) {
     if (error?.message?.includes('429')) {
       return "The AI analysis engine is currently cooling down. Technical confidence in this market remains High based on raw data.";
+    }
+    if (error?.message?.includes('404')) {
+      return "Satellite link 404: The matching neural model is unavailable in this region. System defaulting to high-confidence logic parameters.";
     }
     console.warn("Reasoning AI failed:", error);
     return "Statistical confidence remains in upper tier thresholds based on engine logic.";
@@ -115,6 +118,13 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
          scoreAdjustment: 0,
          isAIPowered: false
        };
+    }
+    if (error?.message?.includes('404')) {
+      return {
+        text: "Neural Link 404: Satellite model mismatch. Reverting to logic engine verification.",
+        scoreAdjustment: 0,
+        isAIPowered: false
+      };
     }
     return {
       text: analysis.aiReasoning,
