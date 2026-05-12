@@ -1,10 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
+const apiKey = process.env.GEMINI_API_KEY || (import.meta.env.VITE_GEMINI_API_KEY as string);
 
 if (!apiKey && typeof window !== 'undefined') {
-  console.warn("CRITICAL: GEMINI_API_KEY is not defined. If this is a Netlify deployment, you must add VITE_GEMINI_API_KEY to your environment variables and TRIGGER A NEW BUILD.");
+  console.warn("CRITICAL: GEMINI_API_KEY is not defined. Ensure it is set in Settings > Secrets or as an environment variable.");
 }
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
@@ -15,9 +15,8 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
   }
 
   try {
-    const model = (ai as any).models || ai;
-    const response = await model.generateContent({
-      model: "gemini-1.5-flash",
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: [{
         role: "user",
         parts: [{
@@ -75,8 +74,8 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
       config.tools = [{ googleSearch: {} }];
     }
 
-    return await (ai as any).models.generateContent({
-      model: "gemini-1.5-flash",
+    return await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: [{
         role: 'user',
         parts: [{
@@ -185,8 +184,8 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
       config.tools = [{ googleSearch: {} }];
     }
 
-    return await (ai as any).models.generateContent({
-      model: "gemini-1.5-flash",
+    return await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: [{
         role: 'user',
         parts: [{
