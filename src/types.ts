@@ -109,6 +109,7 @@ export interface AnalysisOutput {
     criticalFail?: string;
   };
   aiReasoning: string;
+  isAIPowered?: boolean;
   realData?: {
     homeForm?: string;
     awayForm?: string;
