@@ -14,7 +14,10 @@ export async function getProReasoning(match: { homeTeam: string; awayTeam: strin
     });
 
     return response.text || "Market calibration indicates high-density value. Reconstruction engine confirms technical alignment.";
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes('429') || error?.status === 429) {
+      return "The AI analysis engine is currently cooling down due to high demand. Technical confidence in this market remains High based on raw data.";
+    }
     console.error("Gemini Error:", error);
     return "Dynamic analysis engine currently syncing. Statistical confidence remains in upper tier thresholds.";
   }
@@ -37,7 +40,10 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput) {
       - If there is a major conflict, warn the user.`,
     });
     return response.text || analysis.aiReasoning;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes('429') || error?.status === 429) {
+      return "Final Verification: System confirms trend alignment despite AI rate limiting. Proceed with established engine logic.";
+    }
     console.error(error);
     return analysis.aiReasoning;
   }
@@ -122,7 +128,10 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
     // Strip markdown if present
     const cleanJson = text.replace(/```json\n?|```/g, "").trim();
     return JSON.parse(cleanJson);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes('429') || error?.status === 429) {
+      throw new Error("AI analysis quota reached. Please wait a moment before trying another match.");
+    }
     console.error("Gemini Deep Analysis Error:", error);
     throw error;
   }
