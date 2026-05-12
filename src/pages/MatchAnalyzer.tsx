@@ -153,6 +153,7 @@ export function MatchAnalyzer() {
     const finalAnalysis: AnalysisOutput = {
       ...intermediateAnalysis,
       aiReasoning: verdict.text,
+      isAIPowered: !!verdict.isAIPowered,
       confidence: {
         ...intermediateAnalysis.confidence,
         score: Math.min(10, Math.max(0, intermediateAnalysis.confidence.score + verdict.scoreAdjustment)),
@@ -332,6 +333,7 @@ export function MatchAnalyzer() {
       const finalAnalysis: AnalysisOutput = {
         ...mappedAnalysis,
         aiReasoning: verdict.text,
+        isAIPowered: !!verdict.isAIPowered,
         confidence: {
           ...mappedAnalysis.confidence,
           score: Math.min(10, Math.max(0, mappedAnalysis.confidence.score + verdict.scoreAdjustment)),
@@ -375,6 +377,49 @@ export function MatchAnalyzer() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full overflow-hidden">
+      {/* API Key Warning for external deployments */}
+      {((!import.meta.env.VITE_GEMINI_API_KEY || !import.meta.env.VITE_THE_ODDS_API_KEY) && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('run.app')) && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-amber-500/50 p-6 rounded-lg shadow-2xl max-w-md backdrop-blur-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-amber-500/20 rounded-full">
+              <AlertTriangle className="w-6 h-6 text-amber-500" />
+            </div>
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">Critical API Link Failure</h3>
+          </div>
+          <p className="text-xs text-zinc-400 leading-relaxed mb-4">
+            Key neural variables are missing from your deployment. 
+            Vite requires these at <span className="text-white font-bold underline">build-time</span>.
+          </p>
+          <div className="space-y-4 mb-6">
+            <div className="bg-white/5 p-3 rounded border border-white/10">
+              <p className="text-[10px] font-black uppercase text-zinc-500 mb-2">Required Variables:</p>
+              <ul className="text-[10px] space-y-1">
+                <li className="flex justify-between">
+                  <span className="text-zinc-300 italic">VITE_GEMINI_API_KEY</span>
+                  {import.meta.env.VITE_GEMINI_API_KEY ? <span className="text-emerald-500">SET</span> : <span className="text-red-500">MISSING</span>}
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-zinc-300 italic">VITE_THE_ODDS_API_KEY</span>
+                  {import.meta.env.VITE_THE_ODDS_API_KEY ? <span className="text-emerald-500">SET</span> : <span className="text-red-500">MISSING</span>}
+                </li>
+              </ul>
+            </div>
+            
+            <ol className="text-[10px] space-y-2 text-zinc-300 list-decimal pl-4">
+              <li>Add missing keys in <span className="text-emerald-400">Netlify Dashboard &gt; Site Settings &gt; Environment Variables</span>.</li>
+              <li>Go to <span className="text-emerald-400">Deploys</span> tab.</li>
+              <li>Click <span className="text-white font-bold underline">"Trigger deploy" &gt; "Deploy project without cache"</span>.</li>
+            </ol>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-2 bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest rounded hover:bg-amber-400 transition-colors"
+          >
+            I have redeployed, refresh links
+          </button>
+        </div>
+      )}
+
       {/* Sidebar: Match Selector */}
       <div className="lg:col-span-3 technical-border bg-[color:var(--color-header)] flex flex-col h-[50vh] lg:h-full rounded-lg overflow-hidden">
         <div className="p-3 border-b border-white/5 flex items-center justify-between">
@@ -711,13 +756,20 @@ export function MatchAnalyzer() {
                     </div>
                   </div>
                 </div>
-                <div className="technical-border p-3 rounded bg-emerald-500/10 border-emerald-500/20">
+                <div className="technical-border p-3 rounded bg-emerald-500/10 border-emerald-500/20 relative overflow-hidden">
                   <div className="text-[9px] text-emerald-400 font-bold uppercase mb-1">Verdict</div>
                   <div className="text-sm font-bold text-white uppercase">{analysis.transformation.suggestedMarket}</div>
                   <div className="flex items-center gap-1 mt-1">
-                    <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></div>
-                    <span className="text-[8px] text-emerald-400 font-medium uppercase italic">Optimized for safety</span>
+                    <div className={`w-1 h-1 rounded-full ${analysis.isAIPowered ? 'bg-emerald-400' : 'bg-amber-500'} animate-pulse`}></div>
+                    <span className={`text-[8px] font-medium uppercase italic ${analysis.isAIPowered ? 'text-emerald-400' : 'text-amber-500'}`}>
+                      {analysis.isAIPowered ? 'AI Neural Verified' : 'Statistical Fallback Active'}
+                    </span>
                   </div>
+                  {analysis.isAIPowered && (
+                    <div className="absolute top-0 right-0 p-1 opacity-10">
+                       <Zap className="w-8 h-8 text-emerald-400" />
+                    </div>
+                  )}
                 </div>
               </div>
 

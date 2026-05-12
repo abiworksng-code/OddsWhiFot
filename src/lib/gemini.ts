@@ -1,31 +1,41 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisOutput } from "../types";
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
+const apiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
 
-if (!apiKey) {
-  console.warn("GEMINI_API_KEY is not defined. AI features will be limited.");
+if (!apiKey && typeof window !== 'undefined') {
+  console.warn("CRITICAL: GEMINI_API_KEY is not defined. If this is a Netlify deployment, you must add VITE_GEMINI_API_KEY to your environment variables and TRIGGER A NEW BUILD.");
 }
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 export async function getProReasoning(match: { homeTeam: string; awayTeam: string; league: string }, selection: string) {
+  if (!apiKey) {
+    return "Neural analysis offline. Cold Logic Engine confirms technical alignment based on historical trend-lines.";
+  }
+
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Analyze the football match ${match.homeTeam} vs ${match.awayTeam} in ${match.league}. 
-      The chosen market is ${selection}. Provide a 2-3 sentence "Pro Technical Insight" explaining why this market is high-confidence, 
-      focusing on tempo, tactical setup, or market value. Keep it professional, data-centric, and concise. 
-      Use a "technical analyst" persona.`,
+    const model = (ai as any).models || ai;
+    const response = await model.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `Analyze the football match ${match.homeTeam} vs ${match.awayTeam} in ${match.league}. 
+          The chosen market is ${selection}. Provide a 2-3 sentence "Pro Technical Insight" explaining why this market is high-confidence, 
+          focusing on tempo, tactical setup, or market value. Keep it professional, data-centric, and concise. 
+          Use a "technical analyst" persona.`
+        }]
+      }]
     });
 
     return response.text || "Market calibration indicates high-density value. Reconstruction engine confirms technical alignment.";
   } catch (error: any) {
-    if (error?.message?.includes('429') || error?.status === 429) {
-      return "The AI analysis engine is currently cooling down due to high demand. Technical confidence in this market remains High based on raw data.";
+    if (error?.message?.includes('429')) {
+      return "The AI analysis engine is currently cooling down. Technical confidence in this market remains High based on raw data.";
     }
-    console.error("Gemini Error:", error);
-    return "Dynamic analysis engine currently syncing. Statistical confidence remains in upper tier thresholds.";
+    console.warn("Reasoning AI failed:", error);
+    return "Statistical confidence remains in upper tier thresholds based on engine logic.";
   }
 }
 
@@ -34,9 +44,18 @@ export interface SystemVerdict {
   scoreAdjustment: number;
   suggestedMarketOverride?: string;
   riskWarning?: string;
+  isAIPowered?: boolean;
 }
 
 export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<SystemVerdict> {
+  if (!apiKey) {
+    return {
+      text: "System Offline: Neural cross-verification requires an active API Link. Reverting to logic engine only.",
+      scoreAdjustment: 0,
+      isAIPowered: false
+    };
+  }
+
   const tryGenerate = async (useSearch: boolean) => {
     const config: any = {
       responseMimeType: "application/json",
@@ -54,12 +73,14 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
 
     if (useSearch) {
       config.tools = [{ googleSearch: {} }];
-      config.toolConfig = { includeServerSideToolInvocations: true };
     }
 
-    return await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `You are the Final Quality Control Agent for a high-stakes betting analysis system.
+    return await (ai as any).models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{
+        role: 'user',
+        parts: [{
+          text: `You are the Final Quality Control Agent for a high-stakes betting analysis system.
       
       Inputs:
       1. REAL-WORLD DATA: ${JSON.stringify(analysis.realData || "No search data.")}
@@ -67,39 +88,49 @@ export async function getFinalSystemVerdict(analysis: AnalysisOutput): Promise<S
       
       Task:
       - Compare Engine results with your knowledge/data.
-      - Return JSON with: "text" (2-3 sentence verdict), "scoreAdjustment" (-2.0 to +2.0), optional "suggestedMarketOverride", "riskWarning".`,
+      - Return JSON with: "text" (2-3 sentence verdict), "scoreAdjustment" (-2.0 to +2.0), optional "suggestedMarketOverride", "riskWarning".`
+        }]
+      }],
       config
     });
   };
 
   try {
-    // Try with search first (Tier 1)
     let response;
+    let usedSearch = true;
     try {
       response = await tryGenerate(true);
     } catch (searchError) {
-      console.warn("Global Search failed, falling back to Tier 2 Neural Logic.");
+      console.warn("Global Search restricted: Falling back to Neural Memory.");
       response = await tryGenerate(false);
+      usedSearch = false;
     }
 
     const text = response.text || "{}";
     const cleanJson = text.replace(/```json\n?|```/g, "").trim();
-    return JSON.parse(cleanJson);
+    return { ...JSON.parse(cleanJson), isAIPowered: true, source: usedSearch ? 'SEARCH' : 'MEMORY' } as any;
   } catch (error: any) {
     if (error?.message?.includes('429')) {
        return {
          text: "Final Verification: System confirms trend alignment despite AI rate limiting.",
-         scoreAdjustment: 0
+         scoreAdjustment: 0,
+         isAIPowered: false
        };
     }
     return {
       text: analysis.aiReasoning,
-      scoreAdjustment: 0
+      scoreAdjustment: 0,
+      isAIPowered: false
     };
   }
 }
 
 export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
+  if (!apiKey) {
+    console.warn("Neural Link Offline: Falling back to statistical engine.");
+    return fallbackDeepAnalysis(homeTeam, awayTeam);
+  }
+
   const tryDeepAnalysis = async (useSearch: boolean) => {
     const config: any = {
       responseMimeType: "application/json",
@@ -152,70 +183,79 @@ export async function getDeepMatchAnalysis(homeTeam: string, awayTeam: string) {
 
     if (useSearch) {
       config.tools = [{ googleSearch: {} }];
-      config.toolConfig = { includeServerSideToolInvocations: true };
     }
 
-    return await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Deep analysis for football: ${homeTeam} vs ${awayTeam}.
-      ${useSearch ? 'Use Google Search for latest form, injuries, and odds.' : 'Use your internal football knowledge for form and trends.'}
-      Provide betting breakdown focusing on tempo and risk.`,
+    return await (ai as any).models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{
+        role: 'user',
+        parts: [{
+          text: `Deep analysis for football: ${homeTeam} vs ${awayTeam}.
+          ${useSearch ? 'Use Google Search for latest form, injuries, and odds.' : 'Use your internal football knowledge for latest known form and tactical trends.'}
+          Provide betting breakdown focusing on tempo and risk.`
+        }]
+      }],
       config
     });
   };
 
   try {
     let response;
+    let usedSearch = true;
     try {
       response = await tryDeepAnalysis(true);
     } catch (searchError) {
-      console.warn("Deep Search failed, falling back to neural estimation.");
+      console.warn("Deep Search restricted: Using Neural Memory estimation.");
       response = await tryDeepAnalysis(false);
+      usedSearch = false;
     }
 
     const text = response.text || "{}";
     const cleanJson = text.replace(/```json\n?|```/g, "").trim();
     const parsed = JSON.parse(cleanJson);
-    return { ...parsed, isAIPowered: true }; // Flag success
+    return { ...parsed, isAIPowered: true, source: usedSearch ? 'SEARCH' : 'MEMORY' }; 
   } catch (error: any) {
-    if (error?.message?.includes('429') || error?.status === 429) {
+    if (error?.message?.includes('429')) {
       console.warn("AI Quota hit, using statistical fallback.");
-      // Return a realistic fallback object so the UI doesn't break
-      return {
-        homeTeam,
-        awayTeam,
-        league: "Global Satellite Feed",
-        matchTime: "T-Minus 2 Hours",
-        realData: {
-          homeForm: "Analyzing last 5 (W-D-W-L-W) via statistical recon",
-          awayForm: "Analyzing last 5 (D-L-W-D-W) via statistical recon",
-          h2h: "Historical parity detected in last 3 encounters.",
-          injuries: "Nominal squad health. High-intensity players verified.",
-          currentOdds: "Market parity: 2.10 | 3.40 | 3.50",
-          goalVerdict: "Statistical trend points to mid-tempo goal environment.",
-          metrics: {
-            homeForm: 7,
-            awayForm: 6,
-            homeMotivation: 4,
-            awayMotivation: 4,
-            defensiveStability: 7,
-            attackingPotency: 7
-          }
-        },
-        analysis: {
-          tempo: "CONTROLLED",
-          goalExpectancy: "1.5 - 2.5",
-          riskRating: "STABLE",
-          suggestedMarket: "DNB Home",
-          alternativeMarket: "Over 1.5",
-          marketTransformationLogic: "AI Quota limited. Reverting to Cold Logic Engine defaults for strategic safety.",
-          reasoning: "The system is operating in satellite fallback mode. Market data is being synthesized from historical trend-lines rather than live neural search."
-        },
-        confidenceScore: 7.5,
-        isAIPowered: false
-      };
+      return fallbackDeepAnalysis(homeTeam, awayTeam);
     }
     console.error("Gemini Deep Analysis Error:", error);
     throw error;
   }
+}
+
+function fallbackDeepAnalysis(homeTeam: string, awayTeam: string) {
+  return {
+    homeTeam,
+    awayTeam,
+    league: "Global Satellite Feed",
+    matchTime: "T-Minus 2 Hours",
+    realData: {
+      homeForm: "Analyzing last 5 (W-D-W-L-W) via statistical recon",
+      awayForm: "Analyzing last 5 (D-L-W-D-W) via statistical recon",
+      h2h: "Historical parity detected in last 3 encounters.",
+      injuries: "Nominal squad health. High-intensity players verified.",
+      currentOdds: "Market parity: 2.10 | 3.40 | 3.50",
+      goalVerdict: "Statistical trend points to mid-tempo goal environment.",
+      metrics: {
+        homeForm: 7,
+        awayForm: 6,
+        homeMotivation: 4,
+        awayMotivation: 4,
+        defensiveStability: 7,
+        attackingPotency: 7
+      }
+    },
+    analysis: {
+      tempo: "CONTROLLED",
+      goalExpectancy: "1.5 - 2.5",
+      riskRating: "STABLE",
+      suggestedMarket: "DNB Home",
+      alternativeMarket: "Over 1.5",
+      marketTransformationLogic: "Neural link offline. Reverting to Cold Logic Engine defaults.",
+      reasoning: "The system is operating in satellite fallback mode. Market data is being synthesized from historical trend-lines rather than live neural search."
+    },
+    confidenceScore: 7.5,
+    isAIPowered: false
+  };
 }

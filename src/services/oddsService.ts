@@ -44,7 +44,11 @@ export async function getTeamLogo(team: string): Promise<string | null> {
 
 export const fetchUpcomingOdds = async (sport = 'soccer_epl', regions = 'uk', markets = 'h2h'): Promise<OddsMatch[]> => {
   if (!API_KEY) {
-    console.warn('VITE_THE_ODDS_API_KEY is not set. Returning mock hardware-aligned data.');
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('run.app')) {
+       console.error("CRITICAL: VITE_THE_ODDS_API_KEY is missing in production. Live odds will not be available.");
+    } else {
+       console.warn('VITE_THE_ODDS_API_KEY is not set. Returning mock hardware-aligned data.');
+    }
     return []; 
   }
 
