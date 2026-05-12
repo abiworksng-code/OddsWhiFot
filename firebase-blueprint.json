@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["free", "pro", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Football match base data",
+      "type": "object",
+      "properties": {
+        "league": { "type": "string" },
+        "leagueTier": { "type": "string" },
+        "homeTeam": { "type": "string" },
+        "awayTeam": { "type": "string" },
+        "originalOdds": { "type": "object" },
+        "startTime": { "type": "string", "format": "date-time" }
+      },
+      "required": ["league", "leagueTier", "homeTeam", "awayTeam"]
+    },
+    "Analysis": {
+      "title": "Analysis",
+      "description": "AI analysis result for a match",
+      "type": "object",
+      "properties": {
+        "matchId": { "type": "string" },
+        "confidence": { "type": "object" },
+        "transformation": { "type": "object" },
+        "aiReasoning": { "type": "string" },
+        "analyzedAt": { "type": "string", "format": "date-time" },
+        "outcome": { "type": "string", "enum": ["pending", "win", "loss", "void"] },
+        "finalScore": { "type": "string" },
+        "settledAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["matchId", "confidence", "transformation"]
+    },
+    "Slip": {
+      "title": "Slip",
+      "description": "A collection of analyzed matches",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "matchAnalyses": { "type": "array" },
+        "totalOdds": { "type": "number" },
+        "avgConfidence": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "matchAnalyses"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Central matches repository"
+    },
+    "/analyses/{analysisId}": {
+      "schema": "Analysis",
+      "description": "AI-generated analysis records"
+    },
+    "/users/{userId}/slips/{slipId}": {
+      "schema": "Slip",
+      "description": "User-specific betting slips"
+    }
+  }
+}

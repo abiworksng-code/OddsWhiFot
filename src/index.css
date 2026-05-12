@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-main: #050505;
+  --color-rail: #0a0a0a;
+  --color-header: #0f0f0f;
+  --color-card: #141414;
+  --color-accent: #10b981; /* emerald-500 */
+  --color-accent-dim: rgba(16, 185, 129, 0.1);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-text: #ededed;
+  --color-text-dim: #a1a1aa;
+}
+
+:root[data-theme="light"] {
+  --color-main: #f8fafc;
+  --color-rail: #f1f5f9;
+  --color-header: #ffffff;
+  --color-card: #ffffff;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-text: #0f172a;
+  --color-text-dim: #64748b;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-main);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.technical-grid {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, var(--color-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
+}
+
+.technical-border {
+  border: 1px solid var(--color-border);
+}
+
+.mono-value {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
